@@ -3,7 +3,9 @@ const router = express.Router();
 const bcrypt = require('bcrypt')
 const User = require('../models/userModel')
 const passport = require('passport');
+const axios = require('axios');
 const { forwardAuthenticated, ensureAuthenticated} = require('../config/auth');
+const {parse} = require("nodemon/lib/cli");
 
 //login handle
 router.get('/login',  (req,res)=>{
@@ -75,7 +77,7 @@ router.post('/register',(req,res)=> {
 
 router.post('/login',(req,res,next)=>{
     passport.authenticate('local', {
-        successRedirect: '/dashboard',
+        successRedirect: '/users/login-otp',
         failureRedirect: '/users/login',
         failureFlash: true
     })(req, res, next);
@@ -87,4 +89,48 @@ router.get('/logout', (req,res)=>{
     req.flash('success_msg', 'You are logged out');
     res.redirect('/users/login');
 })
+
+//----------------------------------------------------------------------------------------------------------
+async function makePostRequest(email) {
+
+    let payload = { email: email, type: "VERIFICATION" };
+    let res = await axios.post('http://node-otp-service.herokuapp.com/api/v1/email/otp', payload);
+
+    let data = res.data;
+    console.log(data);
+    return data;
+
+}
+
+
+//----------------------------------------------------------------------------------------------------------
+let ver_key;
+
+router.get('/login-otp', (req, res) => {
+    let email = "itzricha12@gmail.com";
+    const data = makePostRequest(email);
+    console.log(data);
+    data.then( res => {
+        ver_key = res.Details;
+    })
+    res.render('otp');
+})
+
+router.post('/login-otp', (req, res) => {
+    let _otp = req.body.otp;
+    let _email = "itzricha12@gmail.com";
+    let payload = { otp: _otp, verification_key: ver_key,  check: _email  };
+    axios.post('http://node-otp-service.herokuapp.com/api/v1/verify/otp', payload)
+        .then(function (response) {
+            console.log(response);
+            if(response.data.Status == "Success") {
+                res.redirect('/dashboard');
+            }
+        })
+        .catch(err => {
+            res.send(err);
+        })
+})
+
+
 module.exports  = router;

@@ -6,10 +6,11 @@ module.exports = {
         req.flash('error_msg' , 'please login to view this resource');
         res.redirect('/users/login');
     },
-    forwardAuthenticated: function(req, res, next) {
-        if (!req.isAuthenticated()) {
+    ensure2FA : function(req,res,next) {
+        if(req.isAuthenticated() ) {  // Add 2FA check
             return next();
         }
-        res.redirect('/dashboard');
+        req.flash('error_msg' , 'please login to view this resource');
+        res.redirect('/users/login-otp');
     }
 }
